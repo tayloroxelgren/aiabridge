@@ -20,6 +20,10 @@ warnings.simplefilter('ignore', category=UserWarning)
 warnings.simplefilter('ignore', category=FutureWarning)
 
 def getBookText(fileName):
+    if fileName.lower().endswith(".txt"):
+        with open(fileName, "r", encoding="utf-8") as f:
+            return f.read()
+
     book=epub.read_epub(fileName)
     bookDocs=book.get_items_of_type(ebooklib.ITEM_DOCUMENT)
     bookText=""
