@@ -9,6 +9,7 @@ from ebooklib import epub
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
+from bs4 import BeautifulSoup
 
 
 
@@ -25,10 +26,10 @@ def getBookText(fileName):
     for doc in bookDocs:
         docContent=doc.get_body_content()
         decoded_html=html.unescape(docContent.decode('utf-8'))
-        root = ET.fromstring(decoded_html)
-        txt = [p.text for p in root.findall(".//p") if p.text]
-        for t in txt:
-            bookText+=t
+        soup = BeautifulSoup(decoded_html, "html.parser")
+        paragraphs = soup.find_all("p")
+        for p in paragraphs:
+            bookText+=p.get_text()
             bookText+="\n\n"
     return bookText
 
