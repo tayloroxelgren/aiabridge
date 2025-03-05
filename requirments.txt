@@ -2,3 +2,4 @@ requests
 ebooklib
 tqdm
 beautifulsoup4
+openai
