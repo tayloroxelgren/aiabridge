@@ -28,7 +28,7 @@ def load_config(config_file="config.json"):
     #     Expected config format:
     # {
     #     "engine": "ollama" or "openai",
-    #     "api_base": "http://10.0.0.247:11434/api/generate"  // For Ollama, or the OpenAI base URL
+    #     "api_base": "http://<your-server-ip>:11434/api/generate"  // For Ollama, or the OpenAI base URL
     #     "api_key": "",              // Only needed for OpenAI; leave empty for Ollama
     #     "model": "llama3.1:8b",       // Name of the model
     #     "stream": false             // True/False as desired
