@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 from openai import OpenAI
+import random
 
 
 
@@ -93,94 +94,96 @@ def splitChunks(text, soft_limit=500):
 
 
 def query_llm(text_chunk):
+    if random.random()>.1:
+        time.sleep(5)
+        config=load_config()
 
-    config=load_config()
-
-    prompt = (
-        "Your goal is to abridge this by half like how audiobooks are frequently abridged. "
-        "Do not acknowledge the prompt under any circumstances or mention what you are doing—just begin the abridging. "
-        "Start of text: " + text_chunk
-    )
-    
-    engine = config.get("engine", "ollama").lower()
-    
-    if engine == "ollama":
-        url = config.get("api_base")
-        model = config.get("model")
-        
-        request_json = {
-            "model": model,
-            "prompt": prompt
-        }
-        
-        response_text = []
-        try:
-            response = requests.post(url, json=request_json, stream=True, timeout=120)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"Ollama API Error: {e}")
-            return ""
-        
-        for line in response.iter_lines(decode_unicode=True):
-            if line:
-                try:
-                    json_line = json.loads(line)
-                    text = json_line.get("response", "")
-                    response_text.append(text)
-                    if json_line.get("done", False):
-                        break
-                except json.JSONDecodeError:
-                    response_text.append(line)
-                    
-        return "".join(response_text)
-    
-    else:
-        # For OpenAI-compatible API.
-        base_url = config.get("api_base")
-        api_key = config.get("api_key")
-        model = config.get("model")
-        stream = config.get("stream", False)
-
-        # Instantiate the OpenAI client with your API key and base URL.
-        client = OpenAI(
-            base_url=base_url,
-            api_key=api_key,
+        prompt = (
+            "Your goal is to abridge this by half like how audiobooks are frequently abridged. So reduce the following text by approximately 50%, preserving the original tone, structure, key names, and metaphors."
+            "Output only the abridged text—no commentary, headings, summaries, or disclaimers"
+            "Start of text: " + text_chunk
         )
-
-        # Construct messages for the chat completion.
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that abridges texts."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
         
-        response_text = []
-        try:
-            # Use the new client method to create a chat completion.
-            completion = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                stream=stream,
-            )
+        engine = config.get("engine", "ollama").lower()
+        
+        if engine == "ollama":
+            url = config.get("api_base")
+            model = config.get("model")
             
-            if stream:
-                # If streaming, iterate over the chunks.
-                for chunk in completion:
-                    # Access chunk based on delta
-                    delta = chunk.choices[0].delta
-                    token = delta.content if hasattr(delta, "content") else ""
-                    response_text.append(token)
-            else:
-                response_text.append(completion.choices[0].message.content)
-        except Exception as e:
-            print(f"OpenAI API Error: {e}")
-            return ""
-        return "".join(response_text)
+            request_json = {
+                "model": model,
+                "prompt": prompt
+            }
+            
+            response_text = []
+            try:
+                response = requests.post(url, json=request_json, stream=True, timeout=120)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                print(f"Ollama API Error: {e}")
+                return ""
+            
+            for line in response.iter_lines(decode_unicode=True):
+                if line:
+                    try:
+                        json_line = json.loads(line)
+                        text = json_line.get("response", "")
+                        response_text.append(text)
+                        if json_line.get("done", False):
+                            break
+                    except json.JSONDecodeError:
+                        response_text.append(line)
+                
+            return "".join(response_text)
+        
+        else:
+            # For OpenAI-compatible API.
+            base_url = config.get("api_base")
+            api_key = config.get("api_key")
+            model = config.get("model")
+            stream = config.get("stream", False)
+
+            # Instantiate the OpenAI client with your API key and base URL.
+            client = OpenAI(
+                base_url=base_url,
+                api_key=api_key,
+            )
+
+            # Construct messages for the chat completion.
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that abridges texts."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            
+            response_text = []
+            try:
+                # Use the new client method to create a chat completion.
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    stream=stream,
+                )
+                
+                if stream:
+                    # If streaming, iterate over the chunks.
+                    for chunk in completion:
+                        # Access chunk based on delta
+                        delta = chunk.choices[0].delta
+                        token = delta.content if hasattr(delta, "content") else ""
+                        response_text.append(token)
+                else:
+                    response_text.append(completion.choices[0].message.content)
+            except Exception as e:
+                print(f"OpenAI API Error: {e}")
+                return ""
+            return "".join(response_text)
+    return text_chunk
 
 
 
@@ -188,7 +191,7 @@ def abridgeText(chunks,concurrentRequests=1):
 
     config=load_config()
     if config["engine"]!="ollama":
-        concurrentRequests=5
+        concurrentRequests=6
 
     if concurrentRequests>1:
         with ThreadPoolExecutor(max_workers=concurrentRequests) as executor:
